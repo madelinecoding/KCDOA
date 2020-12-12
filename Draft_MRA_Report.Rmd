@@ -1,0 +1,243 @@
+---
+title: "Draft MRA Report"
+author: "Madeline Scott"
+date: "12/9/2020"
+output: html_document
+---
+
+```{r set-options, echo = FALSE, cache = FALSE}
+options(width = 150)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(dplyr)
+library(tibble)
+library(ggplot2)
+library(ggthemes)
+library(magrittr)
+library(stats)
+library(knitr)
+library(kableExtra)
+library(ggpubr)
+library(broom)
+library(data.table)
+library(xtable)
+library(gridExtra)
+library(moments)
+library(GGally)
+library(grid)
+library(mctest)
+library(olsrr)
+library(fBasics)
+
+#Read NCSS sales list in CSV format
+AllSales <- read.csv("Area72NCSSData.csv")
+
+#Filter out RemBefore
+AllSales_RemBefore <- AllSales %>%
+  filter(AllSales$RemBefore == "0")
+
+#Filter out RemDuring
+GoodSales <- AllSales_RemBefore %>%
+  filter(AllSales_RemBefore$RemDuring == "0")
+
+#create table with only necessary columns - independend variable and chosen dependent variables
+necessary_data <- GoodSales %>%
+  select(LnTrendedPrice, BaseLandC, ConditionC, GradeC, TotalRcnC, KingCountyYN,
+         Plat320493YN, Plat736630YN, Plats29440X, Plats76952X,
+         Sub8YN, Nghb11_12_YN, AgeC_Ren_Cubed)
+
+#Descriptive Statistics
+#Create standard error function
+std <- function(x) sd(x)/sqrt(length(x))
+
+#Display descriptive statistics of model
+descriptive_stats <- data.table("Variable" = c(colnames(necessary_data)))
+descriptive_stats$Count <- count(necessary_data)
+descriptive_stats$Mean <- apply(necessary_data, 2, mean)
+descriptive_stats$Standard.Deviation <- apply(necessary_data, 2, std)
+descriptive_stats$Min <- apply(necessary_data, 2, min)
+descriptive_stats$Max <- apply(necessary_data, 2, max)
+
+descriptive_stats_final <- descriptive_stats %>% rename("Std. Dev." = "Standard.Deviation")
+```
+
+## Descriptive Statistics
+
+```{r eval = TRUE, echo = FALSE, results="asis"}
+print(xtable(descriptive_stats_final, digits = 5, width=100), include.rownames = FALSE, type = "html")
+```
+```{r eval = TRUE, echo = FALSE}
+#Create variables for computing the multiple regression processes
+response_var <-necessary_data[,1]
+regressor1 <- necessary_data[,2]
+regressor2 <- necessary_data[,3]
+regressor3 <- necessary_data[,4]
+regressor4 <- necessary_data[,5]
+regressor5 <- necessary_data[,6]
+regressor6 <- necessary_data[,7]
+regressor7 <- necessary_data[,8]
+regressor8 <- necessary_data[,9]
+regressor9 <- necessary_data[,10]
+regressor10 <- necessary_data[,11]
+regressor11 <- necessary_data[,12]
+regressor12 <- necessary_data[,13]
+
+#Create table of IV from necessary_data
+IV_table <- necessary_data[,-1]
+
+#Create a list of IV
+regressors <- ls(pat = "regressor")
+
+#Apply multiple regression
+model <- lm(response_var ~ regressor1 + regressor2 + regressor3 +
+              regressor4 + regressor5 + regressor6 + regressor7 + regressor8 +
+              regressor9 + regressor10 + regressor11 + regressor12)
+
+#Show Estimated equation
+model_equation <- function(model, ...) {
+  format_args <- list(...)
+  
+  model_coeff <- model$coefficients
+  format_args$x <- abs(model$coefficients)
+  model_coeff_sign <- sign(model_coeff)
+  model_coeff_prefix <- case_when(model_coeff_sign == -1 ~ " - ",
+                                  model_coeff_sign == 1 ~ " + ",
+                                  model_coeff_sign == 0 ~ " + ")
+  model_eqn <- paste(strsplit(as.character(colnames(necessary_data)), "~")[[1]], # 'y'
+                     "=",
+                     paste(if_else(model_coeff[1]<0, "- ", ""),
+                           do.call(format, format_args)[1],
+                           paste(model_coeff_prefix[-1],
+                                 do.call(format, format_args)[-1],
+                                 " * ",
+                                 names(necessary_data[-1]),
+                                 sep = "", collapse = ""),
+                           sep = ""))
+  return(model_eqn)}
+```
+## Estimated Equation
+
+```{r eval = TRUE, echo = FALSE}
+print(model_equation(model)) #Returns estimated equation in the usual form
+```
+
+
+## Correlation Matrix
+
+```{r eval = TRUE, echo = FALSE}
+#Correlation Matrix
+corr_matrix <-correlation_matrix <- ggcorr(necessary_data, label = TRUE, layout.exp = 1, nbreaks = 5, palette = "RdBu", label_round = 2, label_size = 3, size = 0)
+corr_names <- data.frame(x=seq(necessary_data), y=seq(necessary_data), lbs = names(necessary_data))
+corr_matrix + geom_text(data=corr_names, aes(x, y, label = names(necessary_data), hjust = .3), size = 2.5)
+```
+
+## Regression Coefficients T-Tests
+
+```{r eval= TRUE, echo = FALSE}
+#Regression Coefficients T-Tests
+coefficient <- as.data.frame(summary(model)$coefficient, row.names = FALSE)
+
+coefficient$Variables <- c(colnames(necessary_data)) # adding actual variable names
+coefficient$Reject <- "Yes" #Adding a 'Reject H0 at 1%?' column
+coefficient$Reject[coefficient$'Pr(>|t|)' > 0.05] <- "No"
+
+## Needs Fixing t.test(necessary_data$LnTrendedPrice, necessary_data$BaseLandC)
+
+coefficient_final <- coefficient[,c(5, 1, 2, 3, 4, 6)] %>% rename("Regression Coefficient" = "Estimate",
+                       "T-Statistic to Test H0" = "t value",
+                       "Prob Level" = "Pr(>|t|)",
+                       "Reject H0 at 5%?" = "Reject")
+```
+
+```{r eval = TRUE, echo = FALSE, results="asis"}
+print(xtable(coefficient_final, digits = 8, width=100), include.rownames = FALSE, type = "html")
+```
+# Regression Coefficients Confidence Intervals
+
+```{r eval = TRUE, echo = FALSE}
+conf_limits <- as.data.frame(confint(model, level = 0.95)) %>%
+  rename("Lower 95% Conf. Limit" = "2.5 %",
+         "Upper 95% Conf. Limit" = "97.5 %")
+
+conf_limits$Regression.Coefficient <- coefficient[1]
+conf_limits$Standard.Error <- coefficient[2]
+conf_limits$Variables <- colnames(necessary_data)
+
+full_conf_limits <- conf_limits[, c(5,3, 4, 1, 2)] #reorder to match NCSS format
+```
+
+```{r eval = TRUE, echo = FALSE, results= "asis"}
+print(xtable(full_conf_limits, digits = 5), include.rownames = FALSE, type = "html")
+```
+
+# Analysis of Variance Detail (ANOVA)
+```{r eval = TRUE, echo = FALSE}
+#Analysis of variance detail ANOVA
+variance_detail <- as.data.table(anova(model)) %>%
+  rename("Sum of Squares" = "Sum Sq",
+         "Prob Level" = "Pr(>F)")
+
+variance_detail$Variables <- c(colnames(IV_table), "Error")
+
+anova_final <- variance_detail[,c(6,1, 2, 3, 4, 5)]
+  
+print(anova_final, digits = 5)
+```
+#Regression coefficients confidence intervals
+```{r eval = TRUE, echo = FALSE}
+conf_limits <- as.data.frame(confint(model, level = 0.95)) %>%
+  rename("Lower 95% Conf. Limit" = "2.5 %",
+         "Upper 95% Conf. Limit" = "97.5 %")
+
+conf_limits$Regression.Coefficient <- coefficient[1]
+conf_limits$Standard.Error <- coefficient[2]
+conf_limits$Variables <- c("Intercept", colnames(IV_table))
+
+full_conf_limits <- conf_limits[, c(5, 3, 4, 1, 2)] #reorder to match NCSS format
+rownames(full_conf_limits) <- c()
+
+print(xtable(full_conf_limits), digits = 5, type = "html")
+```
+#Normality of Residuals
+##Plots
+```{r eval = TRUE, echo = FALSE}
+#Plot: histogram of residuals of LnTrendedPrice
+hist_residual <- qplot(model$residuals,
+                       geom = "histogram",
+                       bins = 20,
+                       col = I("black"),
+                       fill = I("yellow")) +
+  labs(title = "Histogram of Residuals",
+       x = "Residual",
+       y = "Frequency")
+
+#Plot: probability plot
+prob_plot <- ggplot(data = GoodSales, aes(sample = resid(model))) +
+  geom_qq() +
+  geom_qq_line(color = "red") +
+  labs(title = "Normal Probability Plot of Residuals",
+       x = "Theoretical Quantiles",
+       y = "Residuals")
+
+grid.arrange(hist_residual, prob_plot, ncol=2)
+```
+
+##Normality tests
+```{r eval = TRUE, echo = FALSE}
+shapiro_table <- as.data.table(shapiroTest(resid(model))@test)
+anderson_table <- as.data.table(adTest(resid(model))@test)
+dagostino_table <-as.data.table(dagoTest(resid(model))@test)
+
+normality_output <- rbind(shapiro_table, anderson_table, dagostino_table)[,-4] %>%
+  rename("Test Name" = "method",
+         "Prob Level" = "p.value",
+         "Test Statistic" = "statistic")
+
+print(xtable(normality_output[c(3, 1, 2)]), type = "html")
+```
+
+
