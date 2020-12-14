@@ -5,44 +5,45 @@ date: "12/9/2020"
 output: html_document
 ---
 
-```{r set-options, echo = FALSE, cache = FALSE}
+```{r set-options, eval = TRUE, echo = FALSE, include = FALSE}
 options(width = 150)
-```
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(dplyr)
 library(tibble)
-library(ggplot2)
-library(ggthemes)
 library(magrittr)
-library(stats)
 library(knitr)
 library(kableExtra)
-library(ggpubr)
+library(rjson)
+library(jsonlite)
 library(broom)
 library(data.table)
 library(xtable)
 library(gridExtra)
-library(moments)
+library(ggplot2)
+library(ggthemes)
+library(ggpubr)
 library(GGally)
 library(grid)
-library(mctest)
 library(olsrr)
 library(fBasics)
+library(car)
+library(purrr)
+```
 
-#Read NCSS sales list in CSV format
-AllSales <- read.csv("Area72NCSSData.csv")
+```{r eval = TRUE, echo = FALSE}
+#Read NCSS sales list in JSON format
+AllSalesJSON <- fromJSON("Area72NCSSData.json", flatten = TRUE)
+
+AllSales <- as.data.frame(AllSalesJSON)
 
 #Filter out RemBefore
 AllSales_RemBefore <- AllSales %>%
-  filter(AllSales$RemBefore == "0")
+  dplyr::filter(AllSales$RemBefore == "0")
 
 #Filter out RemDuring
 GoodSales <- AllSales_RemBefore %>%
-  filter(AllSales_RemBefore$RemDuring == "0")
+  dplyr::filter(AllSales_RemBefore$RemDuring == "0")
 
 #create table with only necessary columns - independend variable and chosen dependent variables
 necessary_data <- GoodSales %>%
@@ -68,7 +69,8 @@ descriptive_stats_final <- descriptive_stats %>% rename("Std. Dev." = "Standard.
 ## Descriptive Statistics
 
 ```{r eval = TRUE, echo = FALSE, results="asis"}
-print(xtable(descriptive_stats_final, digits = 5, width=100), include.rownames = FALSE, type = "html")
+kbl(descriptive_stats_final, digits = 5) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F, position = "left")
 ```
 ```{r eval = TRUE, echo = FALSE}
 #Create variables for computing the multiple regression processes
@@ -154,7 +156,8 @@ coefficient_final <- coefficient[,c(5, 1, 2, 3, 4, 6)] %>% rename("Regression Co
 ```
 
 ```{r eval = TRUE, echo = FALSE, results="asis"}
-print(xtable(coefficient_final, digits = 8, width=100), include.rownames = FALSE, type = "html")
+kbl(coefficient_final, digits = 8) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F, position = "left")
 ```
 # Regression Coefficients Confidence Intervals
 
@@ -165,16 +168,20 @@ conf_limits <- as.data.frame(confint(model, level = 0.95)) %>%
 
 conf_limits$Regression.Coefficient <- coefficient[1]
 conf_limits$Standard.Error <- coefficient[2]
-conf_limits$Variables <- colnames(necessary_data)
+conf_limits$Variable <- colnames(necessary_data)
 
-full_conf_limits <- conf_limits[, c(5,3, 4, 1, 2)] #reorder to match NCSS format
+full_conf_limits <- conf_limits[, c(5,3, 4, 1, 2)] %>%
+  rename("Std. Error" = "Standard.Error",
+         "Regression Coefficient" = "Regression.Coefficient")
+rownames(full_conf_limits) <- c()
 ```
 
 ```{r eval = TRUE, echo = FALSE, results= "asis"}
-print(xtable(full_conf_limits, digits = 5), include.rownames = FALSE, type = "html")
+kbl(full_conf_limits, digits = 5) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F, position = "left")
 ```
 
-# Analysis of Variance Detail (ANOVA)
+## Analysis of Variance Detail (ANOVA)
 ```{r eval = TRUE, echo = FALSE}
 #Analysis of variance detail ANOVA
 variance_detail <- as.data.table(anova(model)) %>%
@@ -185,28 +192,15 @@ variance_detail$Variables <- c(colnames(IV_table), "Error")
 
 anova_final <- variance_detail[,c(6,1, 2, 3, 4, 5)]
   
-print(anova_final, digits = 5)
+kbl(anova_final, digits = 5) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F, position = "left")
 ```
-#Regression coefficients confidence intervals
-```{r eval = TRUE, echo = FALSE}
-conf_limits <- as.data.frame(confint(model, level = 0.95)) %>%
-  rename("Lower 95% Conf. Limit" = "2.5 %",
-         "Upper 95% Conf. Limit" = "97.5 %")
 
-conf_limits$Regression.Coefficient <- coefficient[1]
-conf_limits$Standard.Error <- coefficient[2]
-conf_limits$Variables <- c("Intercept", colnames(IV_table))
+## Normality of Residuals  
 
-full_conf_limits <- conf_limits[, c(5, 3, 4, 1, 2)] #reorder to match NCSS format
-rownames(full_conf_limits) <- c()
-
-print(xtable(full_conf_limits), digits = 5, type = "html")
-```
-#Normality of Residuals
-##Plots
-```{r eval = TRUE, echo = FALSE}
+```{r eval = TRUE, echo = FALSE, message = FALSE, fig.width = 9}
 #Plot: histogram of residuals of LnTrendedPrice
-hist_residual <- qplot(model$residuals,
+hist_residual <- qplot(resid(model),
                        geom = "histogram",
                        bins = 20,
                        col = I("black"),
@@ -219,15 +213,19 @@ hist_residual <- qplot(model$residuals,
 prob_plot <- ggplot(data = GoodSales, aes(sample = resid(model))) +
   geom_qq() +
   geom_qq_line(color = "red") +
-  labs(title = "Normal Probability Plot of Residuals",
+  labs(title = "Probability Plot of Residuals",
        x = "Theoretical Quantiles",
        y = "Residuals")
 
-grid.arrange(hist_residual, prob_plot, ncol=2)
+normality_plots <-grid.arrange(hist_residual, prob_plot, ncol = 2)
 ```
 
-##Normality tests
-```{r eval = TRUE, echo = FALSE}
+```{r eval = TRUE, echo = FALSE, include=FALSE}
+return(normality_plots)
+```
+
+
+```{r eval = TRUE, echo = FALSE, results='asis'}
 shapiro_table <- as.data.table(shapiroTest(resid(model))@test)
 anderson_table <- as.data.table(adTest(resid(model))@test)
 dagostino_table <-as.data.table(dagoTest(resid(model))@test)
@@ -236,8 +234,39 @@ normality_output <- rbind(shapiro_table, anderson_table, dagostino_table)[,-4] %
   rename("Test Name" = "method",
          "Prob Level" = "p.value",
          "Test Statistic" = "statistic")
+normality_output <- normality_output[, c(3,1,2)]
 
-print(xtable(normality_output[c(3, 1, 2)]), type = "html")
+
+kbl(normality_output, digits = 5) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F, position = "left")
+```
+
+
+## Residual of Y vs Sale Price
+
+```{r eval = TRUE, echo = FALSE}
+plot(GoodSales$Sprice, resid(model),
+     main = "" ,
+     xlab = "Sale Price" ,
+     ylab = "Residual of Y")
+abline(h = 0, col = "red")
+```
+
+# Variable Plots  
+
+## Fitted Y vs Fitted X
+
+```{r eval = TRUE, echo = FALSE}
+#set number of rows based on number of IVs
+graphs_layout_rows <- ceiling(length(regressors)/2)
+marginalModelPlots(model = model, main="", ylab = "LnTrendedPrice", smooth = FALSE, ask = FALSE, col = "blue")
+```
+
+
+## Partial Residual Plots
+
+```{r eval = TRUE, echo = FALSE}
+crPlots((model = model), ask = FALSE, ylab = "Resid. LnTrendedPrice", col = "red", smooth = FALSE)
 ```
 
 
