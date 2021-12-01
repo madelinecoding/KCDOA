@@ -1,0 +1,11 @@
+{
+  "IndependentVariable1": "BaseLandC",
+  "IndependentVariable2": "TotalRcnC",
+  "IndependentVariable3": "AgeC_Ren",
+  "IndependentVariable4": "GoodYN",
+  "IndependentVariable5": "VGoodYN",
+  "DependentVariable": "LnTrendedPrice",
+  "ValuationDate": "01/01/2020",
+  "RegressionName": "EMV",
+  "UserFullName": "Todd McMeekin"
+}

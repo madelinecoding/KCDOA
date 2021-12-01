@@ -1,0 +1,31 @@
+{
+  "results": [
+    {
+      "name": "regression_results",
+      "Intercept": 6.08514859421406,
+      "Coefficient1": 0.292299138797382,
+      "Coefficient2": 0.331221399903332,
+      "Coefficient3": -0.0978292792914997,
+      "Coefficient4": 0.0306832003659105,
+      "Coefficient5": 0.110260453251257
+    },
+    {
+      "name": "regression_goodness_of_fit",
+      "R-Squared": 0.420525463382323,
+      "AdjustedR-Squared": 0.417879460932014
+    }
+  ],
+  "EstimatedEquation": [
+    {
+      "EstimatedEquation": "LnTrendedPrice = 6.08514859421406 + 0.292299138797382 * BaseLandC + 0.331221399903332 * TotalRcnC - 0.0978292792914997 * AgeC_Ren + 0.0306832003659105 * GoodYN + 0.110260453251257 * VGoodYN"
+    }
+  ],
+  "fileResults": [
+    {
+      "Type": "Report",
+      "Title": "Regression Report",
+      "FileName": "EMVMRA.html",
+      "Description": "EMV MRA HTML Report"
+    }
+  ]
+}

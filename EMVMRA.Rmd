@@ -1,0 +1,123 @@
+---
+title: "Regression Report"
+author: #"`r #paramJson$UserFullName`"
+date: #"`r #Sys.Date()`"
+output:
+html_document: default
+pdf_document: default
+---
+
+```{r set-options, eval = TRUE, echo = FALSE, include = FALSE}
+options(width = 150)
+library(magrittr)
+library(knitr)
+library(kableExtra)
+library(jsonlite)
+library(jtools)
+library(tidyverse)
+library(broom)
+library(data.table)
+library(gridExtra)
+library(ggthemes)
+library(ggpubr)
+library(GGally)
+library(plotly)
+library(grid)
+library(olsrr)
+library(fBasics)
+library(car)
+library(lmSubsets)
+library(rmarkdown)
+```
+
+## Estimated Equation
+```{r eval = TRUE, echo = FALSE}
+    EstimatedEquation
+```
+
+***
+## Descriptive Statistics
+```{r eval = TRUE, echo = FALSE, results="asis"}
+    DescriptiveStatistics
+```
+
+***
+## Run Summary Report
+```{r eval = TRUE, echo = FALSE, dpi=250}
+    RunSummaryReport
+```
+
+***
+## Correlation Matrix
+```{r eval = TRUE, echo = FALSE, dpi=150}
+    CorrelationMatrix
+```
+
+***
+## Coefficients T-Tests and Confidence Intervals
+```{r eval = TRUE, echo = FALSE, dpi=250}
+    Coefficient
+```                  
+
+***
+## Analysis of Variance Detail (ANOVA)
+```{r eval = TRUE, echo = FALSE, dpi=250}
+    ANOVATable
+```
+
+***
+## R-Squared Report
+```{r eval = TRUE, echo = FALSE, dpi=250}
+    RSqReport
+```
+
+***
+## Variable Omission Report
+```{r eval = TRUE, echo = FALSE, dpi=250}
+    if (IndepVariableCount > 2) {
+      VarOmissionFull
+    }
+```    
+
+***
+## Multicollinearity Table
+```{r eval = TRUE, echo = FALSE, dpi=250}
+    MulticollinearityTable
+```                  
+
+***
+## Histogram and QQ-Plots
+```{r eval = TRUE, echo = FALSE, dpi=150}
+    HistResidual
+    QQPlotly
+``` 
+
+***
+## Normality Output
+```{r eval = TRUE, echo = FALSE, dpi=250}                       
+    NormalityOutput
+```
+
+***
+## Residual of Y vs Predicted Y
+```{r eval = TRUE, echo = FALSE, dpi=150}                  
+    YvPredY
+```
+
+***
+## Residual of Y vs Sale Price
+```{r eval = TRUE, echo = FALSE, dpi=150}
+    ResYvSP
+```                  
+
+***
+## Fitted Y vs Fitted X Plots
+```{r eval = TRUE, echo = FALSE, dpi=150}
+    FittedPlots
+```
+
+***
+## Component + Residual Plots
+```{r eval = TRUE, echo = FALSE, dpi=150}
+    CompResidPlots
+```
